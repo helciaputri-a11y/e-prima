@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Prima Absensi Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        h1 { color: #2e7d32; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { background: #2e7d32; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; }
+        button:hover { background: #1b5e20; }
+        .history-section { margin-top: 30px; }
+        .card { background: #fff; padding: 12px 15px; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid #1976d2; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>e-Prima Absensi</h1>
+    <p>Silakan isi form di bawah untuk melakukan absensi.</p>
+    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+    
+    <!-- Form Input Absen -->
+    <div class="form-group">
+        <label>Nama Lengkap:</label>
+        <input type="text" id="namaInput" value="Helcia Andika Putri" placeholder="Masukkan nama kamu...">
+    </div>
+
+    <div class="form-group">
+        <label>Status Kehadiran:</label>
+        <select id="statusInput">
+            <option value="WFO">WFO (Work From Office)</option>
+            <option value="WFH">WFH (Work From Home)</option>
+            <option value="Izin">Izin / Sakit</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Keterangan Absen:</label>
+        <select id="kategoriInput">
+            <option value="Masuk">Absen Masuk</option>
+            <option value="Mulai Istirahat">Mulai Istirahat</option>
+            <option value="Selesai Istirahat">Selesai Istirahat</option>
+            <option value="Pulang">Absen Pulang</option>
+        </select>
+    </div>
+
+    <button onclick="kirimAbsen()">Kirim Absensi</button>
+
+    <!-- Riwayat Absensi -->
+    <div class="history-section">
+        <h3>Riwayat Absensi Terbaru</h3>
+        <div id="riwayat-container">
+            <p style="color: #666;">Memuat data riwayat...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Pustaka Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+    const SUPABASE_URL = 'https://vvvmiyjacubggqirinq.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_429M-Y5pz5Rh6hjt9-8pLA_Hp0vd7Sn';
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        auth: { persistSession: false }
+    });
+
+    // Fungsi Mengirim Absen ke Supabase
+    async function kirimAbsen() {
+        const nama = document.getElementById('namaInput').value;
+        const status = document.getElementById('statusInput').value;
+        const kategori = document.getElementById('kategoriInput').value;
+        const waktu = new Date().toLocaleString('id-ID');
+
+        if (!nama) {
+            alert('Nama harus diisi terlebih dahulu!');
+            return;
+        }
+
+        const { data, error } = await supabaseClient
+            .from('attendance')
+            .insert([{ nama: nama, status: status, kategori: kategori, waktu: waktu }]);
+
+        if (error) {
+            alert('Gagal Menyimpan: ' + error.message);
+        } else {
+            alert('Absensi berhasil dicatat!');
+            loadRiwayat();
+        }
+    }
+
+    // Fungsi Memuat Riwayat Absensi
+    async function loadRiwayat() {
+        const container = document.getElementById('riwayat-container');
+        const { data: absensis, error } = await supabaseClient
+            .from('attendance')
+            .select('*')
+            .order('id', { ascending: false });
+
+        if (error) {
+            container.innerHTML = '<p style="color: red;">Gagal memuat riwayat.</p>';
+            return;
+        }
+
+        if (!absensis || absensis.length === 0) {
+            container.innerHTML = '<p>Belum ada data absensi.</p>';
+            return;
+        }
+
+        let html = '';
+        absensis.forEach(item => {
+            html += `
+                <div class="card">
+                    <div>
+                        <strong style="color: #2e7d32;">${item.nama}</strong> 
+                        <span style="background: #e0f2f1; color: #00796b; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 8px;">${item.status}</span>
+                        <div style="color: #555; margin-top: 4px; font-size: 14px;">Status: <b>${item.kategori}</b></div>
+                    </div>
+                    <div style="color: #888; font-size: 12px;">${item.waktu || 'Baru saja'}</div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    loadRiwayat();
+</script>
+
+</body>
+</html>
